@@ -1,0 +1,15 @@
+name: test-auto-tag
+on: [push, pull_request]
+jobs:
+  auto-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Run action
+        uses: notdodo/test-GHAs/auto-tag@main
+        with:
+          bump_strategy: patch
+          prefix: test-v
+          main_branch: main
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          dry_run: false

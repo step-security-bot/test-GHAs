@@ -1,0 +1,36 @@
+name: Var
+
+on:
+  workflow_dispatch:
+
+jobs:
+  print-secrets:
+    runs-on: ubuntu-latest
+    environment: cs
+    steps:
+      - uses: actions/checkout@v3
+      - name: load secrets
+        run: |
+          S="PASSWORD";
+          ASDF=${{ secrets[0] }};
+          if [[ $ASDF == *"PASSWORD"* ]]; then
+            echo "This is the password!"
+          else
+            echo "rip"
+          fi
+
+          ASDF=${{ secrets }};
+          echo ${ASDF[@]};
+          if [[ ${ASDF[0]} == *"PASSWORD"* ]]; then
+            echo "This is the password!";
+          else
+            echo "rip";
+          fi
+
+          TESTP=${{ secrets.PASSWORD }}
+          if [[ $TESTP == *"PASSWORD"* ]]; then
+            echo "This is the password!"
+          else
+            echo "rip"
+          fi
+      - run: env
