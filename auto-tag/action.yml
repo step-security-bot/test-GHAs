@@ -2,7 +2,7 @@ name: "Auto Tagger Action"
 description: "Action to generate tags automatically using semver versioning"
 author: "notdodo"
 inputs:
-  bump_strategy:
+  default_bump_strategy:
     description: "Bump strategy to use by default is not instruction is provided"
     default: "skip"
   prefix:

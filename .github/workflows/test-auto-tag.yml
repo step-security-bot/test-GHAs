@@ -8,7 +8,7 @@ jobs:
       - name: Run action
         uses: notdodo/test-GHAs/auto-tag@main
         with:
-          bump_strategy: patch
+          default_bump_strategy: skip
           prefix: test-v
           main_branch: main
           github_token: ${{ secrets.GITHUB_TOKEN }}

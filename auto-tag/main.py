@@ -4,211 +4,76 @@ Python script to generate a new GitHub tag bumping its version following semver 
 
 import os
 import sys
-from dataclasses import dataclass
-from datetime import datetime
-from enum import Enum
-from hmac import new
 
-import github
-import requests
-import semver
-from github import Repository
 from semver import Version
 
+from configuration import BumpStrategy, Configuration
+from github_helpers import GitHubHelper
 
-class BumpStrategy(Enum):
-    """Enum containing the different version bump strategy for semver"""
+config = Configuration.from_env()
 
-    MAJOR: str = "major"
-    MINOR: str = "minor"
-    PATCH: str = "patch"
-    SKIP: str = "skip"
-
-
-@dataclass
-class Tag:
-    """Tag resource"""
-
-    name: str
-    commit: str
-    message: str = ""
-    type: str = "commit"
-    date: datetime = datetime.now()
-
-
-@dataclass
-class Configuration:
-    """Configuration resource"""
-
-    # pylint: disable=invalid-name
-    BIND_TO_MAJOR = True
-    DEFAULT_BUMP_STRATEGY: BumpStrategy = BumpStrategy.SKIP
-    DEFAULT_BRANCH: str = "main"
-    PREFIX: str = "test-v"
-    REPOSITORY: str = os.environ.get("GITHUB_REPOSITORY", "")
-    SUFFIX: str = ""
-    DRY_RUN: bool = False
-
-
-config = Configuration(
-    DEFAULT_BUMP_STRATEGY=BumpStrategy(
-        os.environ.get("INPUT_BUMP_STRATEGY", Configuration.DEFAULT_BUMP_STRATEGY.value)
-    ),
-    DEFAULT_BRANCH=os.environ.get("INPUT_MAIN_BRANCH", Configuration.DEFAULT_BRANCH),
-    PREFIX=os.environ.get("INPUT_PREFIX", Configuration.PREFIX),
-    SUFFIX=os.environ.get("INPUT_SUFFIX", Configuration.SUFFIX),
-    DRY_RUN=os.environ.get("INPUT_DRY_RUN", Configuration.DRY_RUN) == "true",
-)
+if config.DRY_RUN:
+    print("Running in dry-run mode!")
 
 if os.environ.get("GITHUB_REF_NAME") != config.DEFAULT_BRANCH:
     print("Not running from the default branch")
     sys.exit()
 
+github_helper = GitHubHelper(os.environ.get("INPUT_GITHUB_TOKEN", ""), config)
+last_tag = github_helper.get_latest_tag()
+print(f"Previous tag version: {last_tag}")
+bump_strategy = config.get_bump_strategy_from_commits(
+    github_helper.get_commits_since(last_tag.date)
+)
 
-def github_auth() -> Repository.Repository:
-    """Authenticate to GitHub and set the scope to this repository"""
-    auth = github.Github(os.environ.get("INPUT_GITHUB_TOKEN", ""))
-    return auth.get_repo(config.REPOSITORY)
-
-
-def get_latest_tag_or_default(repository: Repository.Repository) -> Tag:
-    """Get the latest available tag on the repository"""
-    last_available_tag = None
-    for tag in repository.get_tags():
-        if (
-            tag.name.startswith(config.PREFIX)
-            and tag.name.endswith(config.SUFFIX)
-            and semver.VersionInfo.is_valid(
-                tag.name.removeprefix(config.PREFIX).removesuffix(config.SUFFIX)
-            )
-        ):
-            last_available_tag = Tag(
-                name=tag.name,
-                commit=tag.commit.sha,
-                date=tag.commit.last_modified_datetime or datetime.now(),
-            )
-            break
-    if not last_available_tag:
-        last_available_tag = Tag(
-            name=config.PREFIX + "0.0.0" + config.SUFFIX,
-            commit=repository.get_commits()[0].sha,
-        )
-        # Force creation of a new tag
-        config.DEFAULT_BUMP_STRATEGY = BumpStrategy.PATCH
-    return last_available_tag
-
-
-def check_bump_strategy_since_last_tag(
-    repository: Repository.Repository, last_available_tag: Tag
-) -> BumpStrategy:
-    """Select the correct bump strategy based on commit message or the default one"""
-    strategies = [strategy.value for strategy in BumpStrategy]
-    last_commits_since_tag = repository.get_commits(
-        since=last_available_tag.date,
-    )
-    for commit in last_commits_since_tag:
-        for strategy in strategies:
-            if f"[#{strategy.lower()}]" in commit.commit.message:
-                return BumpStrategy(strategy)
-    return config.DEFAULT_BUMP_STRATEGY
-
-
-def bump_tag_version(strategy: BumpStrategy, last_available_tag: Tag) -> Tag:
-    """Create a new Tag resource with the increased version number"""
-    current_version = Version.parse(
-        last_available_tag.name.removeprefix(config.PREFIX).removesuffix(config.SUFFIX)
-    )
-    new_version = current_version
-    if strategy == BumpStrategy.MAJOR:
-        new_version = current_version.bump_major()
-    elif strategy == BumpStrategy.MINOR:
-        new_version = current_version.bump_minor()
-    elif strategy == BumpStrategy.PATCH:
-        new_version = current_version.bump_patch()
-
-    return Tag(
-        name=config.PREFIX + str(new_version) + config.SUFFIX,
-        commit=os.environ.get("GITHUB_SHA", ""),
-    )
-
-
-repo = github_auth()
-last_tag = get_latest_tag_or_default(repo)
-bump_strategy = check_bump_strategy_since_last_tag(repo, last_tag)
-
-
-if bump_strategy == BumpStrategy.SKIP:
+if bump_strategy == BumpStrategy.SKIP.value:
     print("No need to create a new tag, skipping")
     sys.exit()
 
-new_tag = bump_tag_version(bump_strategy, last_tag)
-last_commit = repo.get_commit(
-    os.environ.get("GITHUB_SHA", repo.get_commits().get_page(0)[0].sha)
-)
+# def bump_tag_version(strategy: BumpStrategy, last_available_tag: Tag) -> Tag:
+#     """Create a new Tag resource with the increased version number"""
+#     current_version = Version.parse(
+#         last_available_tag.name.removeprefix(config.PREFIX).removesuffix(config.SUFFIX)
+#     )
+#     new_version = current_version
+#     if strategy == BumpStrategy.MAJOR.value:
+#         new_version = current_version.bump_major()
+#     elif strategy == BumpStrategy.MINOR.value:
+#         new_version = current_version.bump_minor()
+#     elif strategy == BumpStrategy.PATCH.value:
+#         new_version = current_version.bump_patch()
 
-tag = repo.create_git_tag(
-    tag=new_tag.name,
-    message=new_tag.message,
-    object=new_tag.commit,
-    type=new_tag.type,
-    tagger=github.InputGitAuthor(
-        str(last_commit.author.name),
-        str(last_commit.author.email),
-        str(datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")),
-    ),
-)
+#     print(strategy, new_version, last_available_tag)
+#     return Tag(
+#         name=config.PREFIX + str(new_version) + config.SUFFIX,
+#         commit=github_helper.get_last_commit().commit.sha,
+#     )
 
-print(f"Last tag: {last_tag}")
-print(f"Creating new tag: {new_tag.name}")
-if not config.DRY_RUN:
-    repo.create_git_ref(f"refs/tags/{new_tag.name}", tag.sha)
-    if config.BIND_TO_MAJOR:
-        if bump_strategy != BumpStrategy.MAJOR:
-            for tag in repo.get_tags():
-                if (
-                    tag.name.startswith(config.PREFIX)
-                    and tag.name.endswith(config.SUFFIX)
-                    and tag.name != last_tag.name
-                    and not semver.VersionInfo.is_valid(
-                        tag.name.removeprefix(config.PREFIX).removesuffix(config.SUFFIX)
-                    )
-                ):
-                    print(f"Need to update the major tag: {tag.name}")
-                    new_tag = Tag(
-                        name=tag.name,
-                        commit=os.environ.get("GITHUB_SHA", ""),
-                    )
-                    # No delete tag support from PyGitHub
-                    res = requests.delete(
-                        f"https://api.github.com/repos/{config.REPOSITORY}/git/refs/tags/{new_tag.name}",
-                        headers={
-                            "Authorization": f"Bearer {os.environ.get('INPUT_GITHUB_TOKEN')}"
-                        },
-                    )
-                    repo.create_git_ref(f"refs/tags/{new_tag.name}", new_tag.commit)
-        else:
-            new_major_tag = (
-                config.PREFIX
-                + str(
-                    Version.parse(
-                        new_tag.name.removeprefix(config.PREFIX).removesuffix(
-                            config.SUFFIX
-                        )
-                    ).major
-                )
-                + config.SUFFIX
+
+new_tag = last_tag.bump_version(bump_strategy, config)
+last_commit = github_helper.get_last_commit()
+print(f"Creating new tag version: {new_tag}")
+github_helper.create_git_tag(new_tag)
+
+if config.BIND_TO_MAJOR:
+    last_major_tag = github_helper.get_latest_major_tag()
+    last_major_tag.commit = github_helper.get_last_commit().commit.sha
+    if bump_strategy != BumpStrategy.MAJOR.value:
+        github_helper.delete_git_tag(last_major_tag.name)
+        print(
+            f"Binding major tag {last_major_tag} to latest commit: {last_major_tag.commit}"
+        )
+        github_helper.create_git_tag(last_major_tag)
+    else:
+        new_major_tag_name = (
+            config.PREFIX
+            + str(
+                Version.parse(
+                    new_tag.name.removeprefix(config.PREFIX).removesuffix(config.SUFFIX)
+                ).major
             )
-            tag = repo.create_git_tag(
-                tag=new_major_tag,
-                message=new_tag.message,
-                object=new_tag.commit,
-                type=new_tag.type,
-                tagger=github.InputGitAuthor(
-                    str(last_commit.author.name),
-                    str(last_commit.author.email),
-                    str(datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")),
-                ),
-            )
-            repo.create_git_ref(f"refs/tags/{new_major_tag}", new_tag.commit)
-else:
-    print("Running in dry-run mode")
+            + config.SUFFIX
+        )
+        last_major_tag.name = new_major_tag_name
+        print(f"Creating new major tag {last_major_tag}")
+        github_helper.create_git_tag(last_major_tag)
