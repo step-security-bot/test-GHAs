@@ -195,7 +195,6 @@ if not config.DRY_RUN:
                             config.SUFFIX
                         )
                     ).major
-                    + 1
                 )
                 + config.SUFFIX
             )
