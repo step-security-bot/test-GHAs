@@ -10,7 +10,7 @@ USER app
 WORKDIR /app
 RUN pip install --user --no-cache-dir poetry==${POETRY_VERSION}
 
-COPY pyproject.toml poetry.lock main.py /app/
+COPY pyproject.toml poetry.lock *.py /app/
 RUN poetry config --local virtualenvs.in-project true && poetry install --only main --no-root
 
 CMD ["/app/.venv/bin/python", "/app/main.py"]
