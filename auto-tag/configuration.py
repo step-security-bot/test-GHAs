@@ -43,7 +43,7 @@ class Configuration:
             PREFIX=os.environ.get("INPUT_PREFIX", cls.PREFIX),
             REPOSITORY=os.environ.get("GITHUB_REPOSITORY", ""),
             SUFFIX=os.environ.get("INPUT_SUFFIX", cls.SUFFIX),
-            DRY_RUN=os.environ.get("INPUT_DRY_RUN", cls.DRY_RUN),
+            DRY_RUN=os.environ.get("INPUT_DRY_RUN", cls.DRY_RUN) == "true",
         )
 
     # pylint: disable=too-many-arguments
