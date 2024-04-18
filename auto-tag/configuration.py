@@ -3,6 +3,7 @@ Module with the configuration of the action
 """
 
 import os
+from dataclasses import dataclass
 from enum import Enum
 from typing import List
 
@@ -12,12 +13,14 @@ from github import Commit
 class BumpStrategy(Enum):
     """Enum containing the different version bump strategy for semver"""
 
+    # pylint: disable=invalid-name
     MAJOR: str = "major"
     MINOR: str = "minor"
     PATCH: str = "patch"
     SKIP: str = "skip"
 
 
+@dataclass(frozen=True)
 class Configuration:
     """Configuration resource"""
 
