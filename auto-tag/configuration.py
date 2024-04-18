@@ -20,7 +20,6 @@ class BumpStrategy(Enum):
     SKIP: str = "skip"
 
 
-@dataclass(frozen=True)
 class Configuration:
     """Configuration resource"""
 
