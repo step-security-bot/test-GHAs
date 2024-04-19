@@ -32,12 +32,15 @@ if bump_strategy == BumpStrategy.SKIP:
     sys.exit()
 
 new_tag = github_helper.bump_tag_version(bump_strategy, last_tag)
+new_tag.commit = os.environ.get("GITHUB_SHA", github_helper.get_last_commit().sha)
 print(f"Creating new tag version: {new_tag}")
 github_helper.create_git_tag(new_tag)
 
 if config.BIND_TO_MAJOR:
     last_major_tag = github_helper.last_available_major_tag
-    last_major_tag.commit = github_helper.get_last_commit().sha
+    last_major_tag.commit = os.environ.get(
+        "GITHUB_SHA", github_helper.get_last_commit().sha
+    )
     if bump_strategy != BumpStrategy.MAJOR:
         github_helper.delete_git_tag(last_major_tag.name)
         print(
