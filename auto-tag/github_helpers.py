@@ -2,43 +2,17 @@
 PyGitHub wrapper
 """
 
+import copy
 import os
-from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Self
+from typing import List
 
 import requests
-from github import Commit, Github, InputGitAuthor
+from github import Github, InputGitAuthor
 from semver import Version, VersionInfo
 
 from configuration import BumpStrategy, Configuration
-
-
-@dataclass
-class Tag:
-    """Tag resource"""
-
-    name: str
-    commit: str
-    message: str = ""
-    type: str = "commit"
-    date: datetime = datetime.now()
-
-    def bump_version(self, strategy: BumpStrategy, config: Configuration) -> Self:
-        """Create a new Tag resource with the increased version number"""
-        current_version = Version.parse(
-            self.name.removeprefix(config.PREFIX).removesuffix(config.SUFFIX)
-        )
-        new_version = current_version
-        if strategy == BumpStrategy.MAJOR.value:
-            new_version = current_version.bump_major()
-        elif strategy == BumpStrategy.MINOR.value:
-            new_version = current_version.bump_minor()
-        elif strategy == BumpStrategy.PATCH.value:
-            new_version = current_version.bump_patch()
-
-        self.name = config.PREFIX + str(new_version) + config.SUFFIX
-        return self
+from github_resources import Commit, Tag
 
 
 class GitHubHelper:
@@ -51,16 +25,49 @@ class GitHubHelper:
         self.last_available_tag = self.get_latest_tag()
         self.last_available_major_tag = self.get_latest_major_tag()
 
-    def get_commits_since(self, since: datetime):
-        """Get a PaginatedList[Commit] since a predefined datetime"""
-        return self.repo.get_commits(
-            since=since + timedelta(seconds=1),
+    def bump_tag_version(self, strategy: BumpStrategy, tag: Tag) -> Tag:
+        """Create a new Tag resource with the increased version number"""
+        new_tag = copy.deepcopy(tag)
+        current_version = Version.parse(
+            tag.name.removeprefix(self.config.PREFIX).removesuffix(self.config.SUFFIX)
         )
+        new_version = current_version
+        if strategy == BumpStrategy.MAJOR:
+            new_version = current_version.bump_major()
+        elif strategy == BumpStrategy.MINOR:
+            new_version = current_version.bump_minor()
+        elif strategy == BumpStrategy.PATCH:
+            new_version = current_version.bump_patch()
 
-    def get_last_commit(self) -> Commit.Commit:
+        new_tag.name = self.config.PREFIX + str(new_version) + self.config.SUFFIX
+        return new_tag
+
+    def get_commits_since(self, since: datetime) -> List[Commit]:
+        """Get a PaginatedList[Commit] since a predefined datetime"""
+        commits = []
+        for commit in self.repo.get_commits(since=since + timedelta(seconds=1)):
+            commits.append(
+                Commit(
+                    commit.sha,
+                    commit.commit.author.name,
+                    commit.commit.author.email,
+                    commit.commit.message,
+                    commit.commit.last_modified_datetime or datetime.now(),
+                )
+            )
+        return commits
+
+    def get_last_commit(self) -> Commit:
         """Get the latest commit available on the repository"""
-        return self.repo.get_commit(
+        commit = self.repo.get_commit(
             os.environ.get("GITHUB_SHA", self.repo.get_commits().get_page(0)[0].sha)
+        )
+        return Commit(
+            commit.sha,
+            commit.commit.author.name,
+            commit.commit.author.email,
+            commit.commit.message,
+            commit.commit.last_modified_datetime or datetime.now(),
         )
 
     def get_latest_tag(self) -> Tag:
@@ -86,8 +93,9 @@ class GitHubHelper:
         if last_available_tag is None:
             last_available_tag = Tag(
                 name=self.config.PREFIX + "0.0.0" + self.config.SUFFIX,
-                commit=self.get_last_commit().commit.sha,
+                commit=self.get_last_commit().sha,
             )
+            self.create_git_tag(last_available_tag)
         return last_available_tag
 
     def get_latest_major_tag(self) -> Tag:
@@ -112,8 +120,9 @@ class GitHubHelper:
         if last_available_major_tag is None:
             last_available_major_tag = Tag(
                 name=self.config.PREFIX + "0" + self.config.SUFFIX,
-                commit=self.get_last_commit().commit.sha,
+                commit=self.get_last_commit().sha,
             )
+            self.create_git_tag(last_available_major_tag)
         return last_available_major_tag
 
     def create_git_tag(self, tag: Tag) -> None:

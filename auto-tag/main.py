@@ -21,24 +21,24 @@ if os.environ.get("GITHUB_REF_NAME") != config.DEFAULT_BRANCH:
 
 github_helper = GitHubHelper(os.environ.get("INPUT_GITHUB_TOKEN", ""), config)
 last_tag = github_helper.last_available_tag
-print(f"Previous tag version: {last_tag}")
+
+print(f"Last available tag: {last_tag}")
 bump_strategy = config.get_bump_strategy_from_commits(
     github_helper.get_commits_since(last_tag.date)
 )
 
-if bump_strategy == BumpStrategy.SKIP.value:
+if bump_strategy == BumpStrategy.SKIP:
     print("No need to create a new tag, skipping")
     sys.exit()
 
-new_tag = last_tag.bump_version(bump_strategy, config)
-last_commit = github_helper.get_last_commit()
+new_tag = github_helper.bump_tag_version(bump_strategy, last_tag)
 print(f"Creating new tag version: {new_tag}")
 github_helper.create_git_tag(new_tag)
 
 if config.BIND_TO_MAJOR:
     last_major_tag = github_helper.last_available_major_tag
-    last_major_tag.commit = github_helper.get_last_commit().commit.sha
-    if bump_strategy != BumpStrategy.MAJOR.value:
+    last_major_tag.commit = github_helper.get_last_commit().sha
+    if bump_strategy != BumpStrategy.MAJOR:
         github_helper.delete_git_tag(last_major_tag.name)
         print(
             f"Binding major tag {last_major_tag} to latest commit: {last_major_tag.commit}"

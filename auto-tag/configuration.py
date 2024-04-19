@@ -3,14 +3,13 @@ Module with the configuration of the action
 """
 
 import os
-from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import List
 
-from github import Commit
+from github_resources import Commit
 
 
-class BumpStrategy(Enum):
+class BumpStrategy(StrEnum):
     """Enum containing the different version bump strategy for semver"""
 
     # pylint: disable=invalid-name
@@ -24,7 +23,7 @@ class Configuration:
     """Configuration resource"""
 
     # pylint: disable=invalid-name
-    BIND_TO_MAJOR = True
+    BIND_TO_MAJOR = False
     DEFAULT_BUMP_STRATEGY: BumpStrategy = BumpStrategy.SKIP
     DEFAULT_BRANCH: str = "main"
     PREFIX: str = "v"
@@ -59,7 +58,7 @@ class Configuration:
         SUFFIX,
         DRY_RUN,
     ):
-        self.BIND_TO_MAJOR = (BIND_TO_MAJOR,)
+        self.BIND_TO_MAJOR = BIND_TO_MAJOR
         self.DEFAULT_BUMP_STRATEGY = DEFAULT_BUMP_STRATEGY
         self.DEFAULT_BRANCH = DEFAULT_BRANCH
         self.PREFIX = PREFIX
@@ -67,11 +66,11 @@ class Configuration:
         self.SUFFIX = SUFFIX
         self.DRY_RUN = DRY_RUN
 
-    def get_bump_strategy_from_commits(self, commits: List[Commit.Commit]):
+    def get_bump_strategy_from_commits(self, commits: List[Commit]):
         """Get the bump strategy from a list of commits parsing the keywords [#<strategy>]"""
         strategies = [strategy.value for strategy in BumpStrategy]
         for commit in commits:
             for strategy in strategies:
-                if f"[#{strategy.lower()}]" in commit.commit.message:
+                if f"[#{strategy.lower()}]" in commit.message:
                     return BumpStrategy(strategy)
         return self.DEFAULT_BUMP_STRATEGY
