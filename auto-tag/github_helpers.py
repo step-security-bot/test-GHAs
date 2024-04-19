@@ -40,6 +40,8 @@ class GitHubHelper:
             new_version = current_version.bump_patch()
 
         new_tag.name = self.config.PREFIX + str(new_version) + self.config.SUFFIX
+        new_tag.commit = os.environ.get("GITHUB_SHA", self.get_last_commit().sha)
+        new_tag.message = os.environ.get("GITHUB_SHA", self.get_last_commit().message)
         return new_tag
 
     def get_commits_since(self, since: datetime) -> List[Commit]:
