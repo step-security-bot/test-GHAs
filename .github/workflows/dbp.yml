@@ -2,6 +2,8 @@ name: "docker"
 
 on:
   push:
+    tags:
+      - test-v*
 
 jobs:
   build-push-docker-image:
@@ -11,8 +13,9 @@ jobs:
       image: notdodo/test-GHAs
       platforms: linux/amd64,linux/arm64
       registry: ghcr.io
-      # https://github.com/docker/metadata-action#typematch
       working-directory: ./auto-tagger/
+      tags: |
+        type=match,pattern=(test-v.*),group=1
     secrets:
       registry-username: notdodo
       registry-password: ${{ secrets.GITHUB_TOKEN }}
