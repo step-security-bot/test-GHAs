@@ -15,5 +15,3 @@ jobs:
       registry-password: ${{ github.token }}
       # https://github.com/docker/metadata-action#typematch
       working-directory: ./auto-tagger/
-    needs:
-      - build
