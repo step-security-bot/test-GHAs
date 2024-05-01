@@ -44,8 +44,9 @@ on:
 
 permissions:
   id-token: write
-  attestations: write
   packages: write
+  contents: read
+  attestations: write
 
 jobs:
   build-and-push-image:
@@ -94,6 +95,6 @@ jobs:
         uses: actions/attest-build-provenance@897ed5eab6ed058a474202017ada7f40bfa52940
         # v1.0.0
         with:
-          subject-name: ${{ inputs.image }}
+          subject-name: ${{ inputs.registry }}/${{ inputs.image }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
