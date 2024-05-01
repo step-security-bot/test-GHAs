@@ -12,10 +12,11 @@ jobs:
       dockerfile: ./auto-tagger/Dockerfile
       image: notdodo/test-GHAs
       platforms: linux/amd64,linux/arm64
+      push: true
       registry: ghcr.io
       working-directory: ./auto-tagger/
       tags: |
-        type=match,pattern=(test-v.*),group=1
+        type=match,pattern=test-v(.*),group=1
     secrets:
       registry-username: notdodo
       registry-password: ${{ secrets.GITHUB_TOKEN }}
