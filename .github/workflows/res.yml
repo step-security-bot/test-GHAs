@@ -95,7 +95,6 @@ jobs:
         uses: actions/attest-build-provenance@897ed5eab6ed058a474202017ada7f40bfa52940
         # v1.0.0
         with:
-          subject-name: ghcr.io/notdodo/test-GHAs
+          subject-name: ${{ inputs.registry }}/${{ inputs.image }}
           subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
-          github-token: ${{ secrets.registry-password }}
+          # push-to-registry: true
