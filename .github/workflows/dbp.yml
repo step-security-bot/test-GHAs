@@ -1,0 +1,19 @@
+name: "docker"
+
+on:
+  push:
+
+
+jobs:
+  build-push-docker-image:
+    uses: notdodo/test-GHAs/.github/workflows/res.yml@main
+    with:
+      dockerfile: ./auto-tagger/Dockerfile
+      image: notdodo/test-GHAs
+      registry: ghcr.io
+      registry-username: notdodo
+      registry-password: ${{ github.token }}
+      # https://github.com/docker/metadata-action#typematch
+      working-directory: ./auto-tagger/
+    needs:
+      - build
