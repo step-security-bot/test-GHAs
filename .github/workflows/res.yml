@@ -62,6 +62,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb
         # v3.3.0
+        with:
+          platforms: ${{ inputs.platforms }}
       - name: Log in to the Container registry
         uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20
         # v3.1.0
@@ -97,4 +99,3 @@ jobs:
         with:
           subject-name: ${{ inputs.registry }}/${{ inputs.image }}
           subject-digest: ${{ steps.push.outputs.digest }}
-          # push-to-registry: true

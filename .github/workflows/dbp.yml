@@ -9,6 +9,7 @@ jobs:
     with:
       dockerfile: ./auto-tagger/Dockerfile
       image: notdodo/test-GHAs
+      platforms: linux/amd64,linux/arm64
       registry: ghcr.io
       # https://github.com/docker/metadata-action#typematch
       working-directory: ./auto-tagger/
