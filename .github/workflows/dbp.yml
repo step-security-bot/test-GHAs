@@ -11,7 +11,8 @@ jobs:
       dockerfile: ./auto-tagger/Dockerfile
       image: notdodo/test-GHAs
       registry: ghcr.io
-      registry-username: notdodo
-      registry-password: ${{ github.token }}
       # https://github.com/docker/metadata-action#typematch
       working-directory: ./auto-tagger/
+    secrets:
+      registry-username: notdodo
+      registry-password: ${{ github.token }}
