@@ -42,6 +42,10 @@ on:
       registry-password:
         required: true
 
+permissions:
+  id-token: write
+  attestations: write
+
 jobs:
   build-and-push-image:
     name: Docker build and push
